@@ -117,7 +117,7 @@ SpringMVC是Spring的一个子集，它是一个框架，而SpringBoot是简化�
 
 一些公共的模块比如common.jar可以直接抽离出来，无需进行重复开发。几个不同的项目，一份common.jar代码即可
 
-#### 2.5 构建聚合工程-1
+#### 2.5 构建聚合工程
 
 顶级项目foodie-dev打包方式为<packaging>pom</packaging>
 
@@ -127,4 +127,7 @@ SpringMVC是Spring的一个子集，它是一个框架，而SpringBoot是简化�
 - pom：用在父级工程或聚合工程中，用来做jar包的版本控制，必须指明这个聚合工程的打包方式为pom。
  ```
 
-  
+#### 2.6 PDMan数据库建模工具使用
+
+PDMan启动记得用管理员模式，不然可能报权限不足
+
