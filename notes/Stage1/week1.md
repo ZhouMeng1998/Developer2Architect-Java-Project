@@ -131,3 +131,242 @@ SpringMVC是Spring的一个子集，它是一个框架，而SpringBoot是简化�
 
 PDMan启动记得用管理员模式，不然可能报权限不足
 
+#### 2.9 物理外键移除原因
+
+- 性能影响：**用外键当然会影响CRUD效率**
+- 热更新：很多软件与游戏都是不停服务器的情况下进行更新**(热更新)**，有外键的话插入的数据很可能没用
+- 降低耦合度：移除外键就去掉了表与表之间物理上的联系。但是逻辑上联系还是存在的
+- 数据分库分表：大型分布式系统都得分库分表，**如果你两张表有外键，分库是很麻烦的**
+
+#### 2.12 Springboot自动装配
+
+@SpringBootApplication这个注解里面带了AutoConfigure注解，其中的spring.factories实现了Springboot的自动装配
+
+![image-20201026175811339](C:\Users\Philip\AppData\Roaming\Typora\typora-user-images\image-20201026175811339.png)
+
+如下图所示内置tomcat
+
+![image-20201026175926763](C:\Users\Philip\AppData\Roaming\Typora\typora-user-images\image-20201026175926763.png)
+
+#### 2.13 HikariCP数据源
+
+![image-20201216123120615](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201216123121.png)
+
+这里最小连接数与最大连接数的设计跟你机器是有关系的，不是最大连接数越大越好。比如4核服务器用10就比较好
+
+```
+    hikari:
+      connection-timeout: 30000 #等待连接池分配连接的最大时长（毫秒），超过这个时长还没可用的连接则发生SQ
+      minimum-idle: 5 #最小连接数
+      maximum-pool-size: 20 #最大连接数
+      auto-commit: true #自动提交
+```
+
+#### 2.17 Mybatis 数据库逆向生成工具
+
+**这个工具可以把你指定数据库的表逆向生成为Java实体类，Mapper以及.xml配置文件**
+
+![image-20201216145713213](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201216145714.png)
+
+在此项目的配置文件里配置对应的数据库，运行即可生成需要的文件
+
+![image-20201216150224031](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201216150225.png)
+
+下面都是自动生成的class，拷贝到foodie-dev中即可
+
+![image-20201216152235287](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201216152236.png)
+
+#### 2.19 [通用Mapper接口所封装的常用方法](./PDF/2-19.pdf)
+
+#### 2.20 Restful Webservice
+
+其实一般用GET（查询）,POST（增删改）即可
+
+![image-20201217114755337](C:\Users\Philip\AppData\Roaming\Typora\typora-user-images\image-20201217114755337.png)
+
+#### 2.21 基于通用mapper编写api接口
+
+注意必须扫描mapper包才可以注入mapper，否则springboot启动报错（stopping service[Tomcat]）
+
+![image-20201217122842425](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201217122843.png)
+
+#### 3.4 用户注册
+
+##### 3.4.1 用户创建
+
+```java
+关注setSex（枚举类的创建）；userId（唯一用户ID）;setPassword(加密)   
+	@Transactional(propagation = Propagation.REQUIRED)
+    @Override
+    public Users createUser(UserBO userBO) {
+
+
+        String userId = sid.nextShort();
+
+        Users user = new Users();
+        user.setId(userId);
+        user.setUsername(userBO.getUsername());
+        try {
+            user.setPassword(MD5Utils.getMD5Str(userBO.getPassword()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // 默认用户昵称同用户名
+        user.setNickname(userBO.getUsername());
+        // 默认头像
+        user.setFace(USER_FACE);
+        // 默认生日
+        user.setBirthday(DateUtil.stringToDate("1900-01-01"));
+        // 默认性别为 保密
+        user.setSex(Sex.secret.type);
+
+        user.setCreatedTime(new Date());
+        user.setUpdatedTime(new Date());
+
+        usersMapper.insert(user);
+
+        return user;
+    }
+```
+
+#### 3.6 整合Swagger2打印日志
+
+```java
+@Configuration
+@EnableSwagger2
+public class Swagger2 {
+//    http://localhost:8088/swagger-ui.html     原路径
+//    http://localhost:8088/doc.html     原路径
+
+    // 配置swagger2核心配置 docket
+    @Bean
+    public Docket createApi() {
+        return new Docket(DocumentationType.SWAGGER_2) //指定文档类型为Swagger2
+                    .apiInfo(apiInfo()) //用于定义api汇总信息
+                    .select()
+                    .apis(RequestHandlerSelectors
+                            .basePackage("com.imooc.controller")) //扫描controller包
+                    .paths(PathSelectors.any()) //扫描包下所有类
+                    .build();
+    }
+
+    private ApiInfo apiInfo() {
+        return new ApiInfoBuilder()
+                .title("天天吃货 电商平台接口api") //文档标题
+                .contact(new Contact("imooc",
+                        "http://www.imooc.com",
+                        "TUSK@gmail.com")) //联系人信息
+                .description("专为天天吃货提供的api文档") //文档描述
+                .version("1.0.1") //版本号
+                .build();
+    }
+}
+```
+
+#### 3.10 CorsConfiguration解决跨域问题
+
+@Configuration
+public class CorsConfig {
+
+```java
+@Bean
+public CorsFilter corsFilter() {
+    // 1. 添加cors配置信息
+    CorsConfiguration config = new CorsConfiguration();
+    config.addAllowedOrigin("http://localhost:8080");
+    config.addAllowedOrigin("http://shop.z.mukewang.com:8080");
+    config.addAllowedOrigin("http://center.z.mukewang.com:8080");
+    config.addAllowedOrigin("http://shop.z.mukewang.com");
+    config.addAllowedOrigin("http://center.z.mukewang.com");
+    config.addAllowedOrigin("*");
+
+    // 设置是否发送cookie信息
+    config.setAllowCredentials(true);
+
+    // 设置允许请求的方式
+    config.addAllowedMethod("*");
+
+    // 设置允许的header
+    config.addAllowedHeader("*");
+
+    // 2. 为url添加映射路径
+    UrlBasedCorsConfigurationSource corsSource = new UrlBasedCorsConfigurationSource();
+    corsSource.registerCorsConfiguration("/**", config);
+
+    // 3. 返回重新定义好的corsSource
+    return new CorsFilter(corsSource);
+}
+```
+
+#### 3.12 cookie与session
+
+cookie与session的区别是，前者是**本地缓存**（最大4KB），后者是**服务器缓存**（能存储的session因此比较少，也可以弄到redis里面去）
+
+相同点：都是以**键值对**的形式储存
+
+一级域名（jd）的cookie可以被次级域名(mercury.jd.com/www.jd.com)共享
+
+![image-20201225110854902](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201225110856.png)
+
+![image-20201225111246849](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201225111248.png)
+
+#### 3.13 实现用户信息在页面展示
+
+效果：
+
+![image-20201225113548173](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201225113549.png)
+
+```Java
+    CookieUtils.setCookie(request, response, "user", JsonUtils.objectToJson(userResult), true);
+    userResult = setNullProperty(userResult);
+    return IMOOCJSONResult.ok(userResult);
+}
+```
+
+#### 3.14 整合log4j打印日志
+
+```Java
+private static final Logger logger = LoggerFactory.getLogger(HelloController.class);
+
+@GetMapping("/hello")
+public Object Hello() {
+    logger.info("info");
+    logger.warn("warn");
+    logger.error("error");
+    logger.debug("debug");
+    return "Hello";
+}
+```
+
+#### 3.16 通过日志监控service执行时间
+
+后置通知与最终通知的区别，前者要"**正常调用"**之后执行
+
+![image-20201225121927893](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201225121929.png)
+
+#### 3.17 用户退出清空cookie
+
+```java
+@ApiOperation(value = "Logout", notes = "Logout", httpMethod = "POST")
+@PostMapping("/logout")
+public IMOOCJSONResult logout(@RequestParam String userId,
+                             HttpServletRequest request,
+                             HttpServletResponse response) throws Exception {
+    CookieUtils.deleteCookie(request, response, "user");
+    return IMOOCJSONResult.ok();
+}
+```
+
+#### 3.18 Mybatis日志打印
+
+加上最下面一行配置，要用StdOutImpl
+
+```java
+mybatis:
+  type-aliases-package: com.immoc.pojo
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+```
+
+![image-20201226115944459](https://raw.githubusercontent.com/ZhouMeng1998/IMG/image-upload/20201226115945.png)
